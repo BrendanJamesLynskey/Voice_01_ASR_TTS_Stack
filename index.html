@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice 01 — The ASR &amp; TTS Stack — Whisper, Deepgram, Cartesia, ElevenLabs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">Voice &amp; Real-Time Agents Series &mdash; Presentation 01</div>
+    <h1>The <span class="accent">Voice Stack</span> &mdash; ASR &rarr; LLM &rarr; TTS</h1>
+    <p class="subtitle">Whisper, Deepgram Nova-3, Cartesia Sonic, ElevenLabs Flash &mdash; every layer of the pipeline with real latency numbers, wire formats, and open-source alternatives.</p>
+
+    <div class="tags">
+        <span class="tag">Whisper</span>
+        <span class="tag">Deepgram</span>
+        <span class="tag">Cartesia</span>
+        <span class="tag">ElevenLabs</span>
+        <span class="tag">Streaming ASR</span>
+        <span class="tag">Voice Cloning</span>
+        <span class="tag">Latency</span>
+    </div>
+
+    <div class="pipeline">
+        <span class="pipeline-step">Mic / PCM</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">ASR</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">VAD / EoU</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">LLM</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">TTS</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Speaker / PCM</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We&rsquo;ll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">The Voice Stack &mdash; ASR &rarr; LLM &rarr; TTS</a></li>
+        <li><a href="#slide-02">Whisper &mdash; Architecture, Multilingual, Fine-Tuning</a></li>
+        <li><a href="#slide-03">Streaming ASR &mdash; Deepgram, Soniox, Gladia, AssemblyAI</a></li>
+        <li><a href="#slide-04">TTS Landscape &mdash; ElevenLabs, Cartesia, OpenAI, PlayHT, Coqui</a></li>
+        <li><a href="#slide-05">Latency-First TTS &mdash; Cartesia Sonic, ElevenLabs Flash</a></li>
+        <li><a href="#slide-06">Voice Cloning &mdash; Capabilities &amp; Ethics</a></li>
+        <li><a href="#slide-07">Quality vs Latency vs Cost Trade-Offs</a></li>
+        <li><a href="#slide-08">Open-Source Options (Whisper, Coqui XTTS, F5-TTS)</a></li>
+        <li><a href="#slide-09">What to Take Away</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>The Voice Stack &mdash; ASR &rarr; LLM &rarr; TTS</h2>
+    <p>A voice assistant has three serial latency contributors. The user speaks; the <strong>ASR</strong> layer produces text; the <strong>LLM</strong> generates a reply; the <strong>TTS</strong> layer speaks it. Each hop adds latency, and the gaps compound: a 300 ms ASR result + 400 ms TTFT + 200 ms TTS first-chunk = <strong>900 ms to first audio byte</strong> &mdash; already over the 800 ms human-comfort threshold.</p>
+
+    <div class="diagram-flow">
+        <div class="diagram-box accent">Mic / PCM 16 kHz</div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">ASR<br><small>transcript</small></div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">VAD / EoU</div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">LLM<br><small>tokens</small></div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">TTS<br><small>audio chunks</small></div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box accent">Speaker / PCM</div>
+    </div>
+
+    <h3>Key latency terms</h3>
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>ASR final latency</h4>
+            <p>Time from end-of-utterance to full transcript. Streaming services return partials (100&ndash;150 ms update cadence) but the <em>stable</em> final may take 300&ndash;600 ms on server-side models like Whisper Large-v3.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>LLM TTFT</h4>
+            <p>Time To First Token. GPT-4o at median &asymp; 320 ms; Claude 3 Haiku &asymp; 280 ms; Llama 3.1-8B on A10G self-hosted &asymp; 180 ms. Prefill cost dominates for short prompts.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>TTS first-chunk</h4>
+            <p>Time from text-in to first PCM audio out. ElevenLabs Flash v2.5: &asymp; 75 ms; Cartesia Sonic: &asymp; 90 ms; OpenAI TTS-1: &asymp; 200 ms. All measured at p50 from US-East.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">The 800 ms budget</div>
+        <p>Human conversation research (Stivers et al., <em>PNAS</em> 2009) puts the comfortable gap between speakers at 200&ndash;400 ms. A voice bot perceived as &ldquo;fast&rdquo; needs total pipeline latency under 800 ms; under 500 ms feels near-human. Every architectural decision in this series is ultimately about defending that budget.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>Whisper &mdash; Architecture, Multilingual, Fine-Tuning</h2>
+    <p>OpenAI&rsquo;s <strong>Whisper</strong> (open-sourced September 2022, current checkpoint <code>whisper-large-v3-turbo</code> released October 2024) is a Transformer encoder&ndash;decoder trained on 680,000 hours of weakly supervised multilingual audio. It is the reference model against which every cloud ASR service is benchmarked.</p>
+
+    <h3>Architecture at a glance</h3>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Encoder &mdash; log-Mel CNN + Transformer</h4>
+            <ul>
+                <li>Input: 80-channel log-Mel spectrogram, 30-second window at 16 kHz</li>
+                <li>Two 1-D conv layers (kernel 3, stride 1 &amp; 2) &rarr; GELU &rarr; 1500-frame sequence</li>
+                <li>Sinusoidal positional embeddings &rarr; N Transformer encoder blocks</li>
+                <li>Large-v3: 32 encoder layers, d<sub>model</sub> = 1280, 20 heads</li>
+            </ul>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Decoder &mdash; causal Transformer with cross-attention</h4>
+            <ul>
+                <li>Auto-regressive over a 50,257-token BPE vocabulary (GPT-2 tokeniser)</li>
+                <li>Special tokens encode task: <code>&lt;|transcribe|&gt;</code>, <code>&lt;|translate|&gt;</code>, language ID e.g. <code>&lt;|en|&gt;</code>, <code>&lt;|fr|&gt;</code></li>
+                <li>Timestamp tokens at 20 ms resolution for word-level alignment</li>
+                <li>Large-v3: 32 decoder layers &mdash; 1.55B total parameters</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>Model size vs. WER (LibriSpeech test-clean, English)</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Checkpoint</th><th>Params</th><th>WER %</th><th>RTF (A100)</th><th>Notes</th></tr></thead>
+            <tbody>
+                <tr><td><code>tiny.en</code></td><td>39M</td><td>5.7</td><td>0.006</td><td>English-only; fastest inference</td></tr>
+                <tr><td><code>base.en</code></td><td>74M</td><td>4.2</td><td>0.012</td><td>Good for CPU edge deployment</td></tr>
+                <tr><td><code>small.en</code></td><td>244M</td><td>3.3</td><td>0.034</td><td>Balance for Raspberry Pi 5</td></tr>
+                <tr><td><code>medium.en</code></td><td>769M</td><td>3.1</td><td>0.10</td><td>Strong multilingual baseline</td></tr>
+                <tr><td><code>large-v3</code></td><td>1550M</td><td>2.7</td><td>0.32</td><td>SOTA; requires A10G+ for realtime</td></tr>
+                <tr><td><code>large-v3-turbo</code></td><td>809M</td><td>2.9</td><td>0.14</td><td>Distilled decoder; 2&times; faster than large-v3</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Fine-tuning workflow</h3>
+    <div class="code-block">
+        <div class="code-header">python — Hugging Face fine-tune with Seq2SeqTrainer</div>
+<pre><code><span class="kw">from</span> transformers <span class="kw">import</span> <span class="type">WhisperForConditionalGeneration</span>, <span class="type">WhisperProcessor</span>
+<span class="kw">from</span> transformers <span class="kw">import</span> <span class="type">Seq2SeqTrainer</span>, <span class="type">Seq2SeqTrainingArguments</span>
+
+model     = <span class="type">WhisperForConditionalGeneration</span>.<span class="fn">from_pretrained</span>(<span class="str">"openai/whisper-small"</span>)
+processor = <span class="type">WhisperProcessor</span>.<span class="fn">from_pretrained</span>(<span class="str">"openai/whisper-small"</span>)
+
+<span class="cm"># Force the decoder to transcribe (not translate) English</span>
+model.generation_config.forced_decoder_ids = processor.<span class="fn">get_decoder_prompt_ids</span>(
+    language=<span class="str">"english"</span>, task=<span class="str">"transcribe"</span>
+)
+
+args = <span class="type">Seq2SeqTrainingArguments</span>(
+    output_dir=<span class="str">"whisper-finetuned"</span>,
+    per_device_train_batch_size=<span class="num">16</span>,
+    gradient_accumulation_steps=<span class="num">1</span>,
+    learning_rate=<span class="num">1e-5</span>,
+    warmup_steps=<span class="num">500</span>,
+    max_steps=<span class="num">4000</span>,
+    fp16=<span class="kw">True</span>,
+    predict_with_generate=<span class="kw">True</span>,
+    generation_max_length=<span class="num">225</span>,
+    metric_for_best_model=<span class="str">"wer"</span>,
+)</code></pre>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Hallucination &amp; repetition</div>
+        <p>Whisper is notorious for hallucinating plausible-sounding phrases on near-silence or background noise. In production, gate ASR calls with a <strong>VAD</strong> (e.g. Silero VAD) and reject any segment whose audio energy falls below &ndash;40 dBFS RMS. The <code>no_speech_prob</code> field in Whisper&rsquo;s output gives a secondary check: threshold at 0.6 is a common heuristic.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Streaming ASR &mdash; Deepgram, Soniox, Gladia, AssemblyAI</h2>
+    <p>Cloud ASR services expose a <strong>WebSocket</strong> or HTTP/2 streaming interface: you push raw PCM frames and receive JSON transcript events in near real-time. The distinguishing variables are model accuracy (WER), end-to-end latency, language coverage, and pricing per audio-minute.</p>
+
+    <h3>Service comparison &mdash; as of Q1 2026</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Service</th><th>Model</th><th>en-US WER</th><th>Streaming latency p50</th><th>Languages</th><th>Price / min</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Deepgram</strong></td><td>Nova-3</td><td>7.2 %</td><td>~180 ms</td><td>36</td><td>$0.0043</td></tr>
+                <tr><td><strong>Deepgram</strong></td><td>Nova-2 (medical)</td><td>6.1 % (med)</td><td>~200 ms</td><td>1</td><td>$0.0125</td></tr>
+                <tr><td><strong>Soniox</strong></td><td>Precision v3</td><td>6.8 %</td><td>~160 ms</td><td>50+</td><td>$0.0040</td></tr>
+                <tr><td><strong>Gladia</strong></td><td>Whisper-based</td><td>8.4 %</td><td>~250 ms</td><td>99</td><td>$0.0036</td></tr>
+                <tr><td><strong>AssemblyAI</strong></td><td>Universal-2</td><td>7.8 %</td><td>~220 ms</td><td>17</td><td>$0.0065</td></tr>
+                <tr><td><strong>Google STT v2</strong></td><td>Chirp 2</td><td>6.5 %</td><td>~230 ms</td><td>100+</td><td>$0.0060</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Deepgram WebSocket wire format</h3>
+    <div class="code-block">
+        <div class="code-header">python — Deepgram Nova-3 streaming over WebSocket</div>
+<pre><code><span class="kw">import</span> asyncio, websockets, json
+
+<span class="type">URL</span> = (<span class="str">"wss://api.deepgram.com/v1/listen"</span>
+       <span class="str">"?model=nova-3&amp;encoding=linear16&amp;sample_rate=16000"</span>
+       <span class="str">"&amp;channels=1&amp;interim_results=true&amp;endpointing=300"</span>)
+
+<span class="kw">async def</span> <span class="fn">stream_asr</span>(audio_queue: asyncio.<span class="type">Queue</span>) -&gt; <span class="kw">None</span>:
+    headers = {<span class="str">"Authorization"</span>: <span class="str">f"Token </span><span class="type">{DG_API_KEY}</span><span class="str">"</span>}
+    <span class="kw">async with</span> websockets.<span class="fn">connect</span>(<span class="type">URL</span>, extra_headers=headers) <span class="kw">as</span> ws:
+        <span class="kw">async def</span> <span class="fn">sender</span>():
+            <span class="kw">while</span> (chunk := <span class="kw">await</span> audio_queue.<span class="fn">get</span>()) <span class="kw">is not</span> <span class="kw">None</span>:
+                <span class="kw">await</span> ws.<span class="fn">send</span>(chunk)            <span class="cm"># raw PCM bytes</span>
+            <span class="kw">await</span> ws.<span class="fn">send</span>(json.<span class="fn">dumps</span>({<span class="str">"type"</span>: <span class="str">"CloseStream"</span>}))
+
+        <span class="kw">async def</span> <span class="fn">receiver</span>():
+            <span class="kw">async for</span> msg <span class="kw">in</span> ws:
+                data = json.<span class="fn">loads</span>(msg)
+                alt = data[<span class="str">"channel"</span>][<span class="str">"alternatives"</span>][<span class="num">0</span>]
+                <span class="kw">if</span> data[<span class="str">"is_final"</span>]:
+                    <span class="fn">on_final_transcript</span>(alt[<span class="str">"transcript"</span>],
+                                          alt[<span class="str">"words"</span>])
+
+        <span class="kw">await</span> asyncio.<span class="fn">gather</span>(<span class="fn">sender</span>(), <span class="fn">receiver</span>())</code></pre>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Interim vs. final results</div>
+        <p><code>interim_results=true</code> fires a transcript event every ~150 ms with the partial hypothesis. Setting <code>endpointing=300</code> tells Deepgram to emit a final result after 300 ms of trailing silence, with <code>speech_final: true</code>. This flag &mdash; not <code>is_final</code> &mdash; is the reliable end-of-utterance signal in the Deepgram API. Confusing the two is the most common integration bug.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>TTS Landscape &mdash; ElevenLabs, Cartesia, OpenAI, PlayHT, Coqui</h2>
+    <p>Text-to-speech has bifurcated into two tiers: <strong>quality-first</strong> models that prioritise naturalness and expressiveness (ElevenLabs, PlayHT) and <strong>latency-first</strong> models that sacrifice some naturalness for sub-100 ms first-chunk times (Cartesia Sonic, ElevenLabs Flash). The split mirrors the TTFT/quality trade-off in LLMs.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Service</th><th>Model</th><th>First-chunk p50</th><th>MOS score</th><th>Streaming</th><th>Price / 1K chars</th></tr></thead>
+            <tbody>
+                <tr><td><strong>ElevenLabs</strong></td><td>Multilingual v2</td><td>~300 ms</td><td>4.4</td><td>WebSocket / HTTP SSE</td><td>$0.30</td></tr>
+                <tr><td><strong>ElevenLabs</strong></td><td>Flash v2.5</td><td>~75 ms</td><td>4.2</td><td>WebSocket / HTTP SSE</td><td>$0.11</td></tr>
+                <tr><td><strong>Cartesia</strong></td><td>Sonic 2</td><td>~90 ms</td><td>4.3</td><td>WebSocket</td><td>$0.065</td></tr>
+                <tr><td><strong>OpenAI</strong></td><td>TTS-1</td><td>~200 ms</td><td>3.9</td><td>HTTP chunked</td><td>$0.015</td></tr>
+                <tr><td><strong>OpenAI</strong></td><td>TTS-1-HD</td><td>~400 ms</td><td>4.2</td><td>HTTP chunked</td><td>$0.030</td></tr>
+                <tr><td><strong>PlayHT</strong></td><td>PlayDialog</td><td>~250 ms</td><td>4.5</td><td>WebSocket</td><td>$0.36</td></tr>
+                <tr><td><strong>Coqui XTTS-v2</strong></td><td>Self-hosted</td><td>~180 ms (A10G)</td><td>4.0</td><td>Streaming (custom)</td><td>Compute only</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Choosing a voice</h3>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Pre-built voice libraries</h4>
+            <p>ElevenLabs ships 3,000+ voices across language and accent; Cartesia has ~200 curated voices plus a growing community library. Both APIs accept a <code>voice_id</code> string and a <code>model_id</code> string independently &mdash; swap the model without re-choosing the voice.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Clone vs. design</h4>
+            <p>For a <em>branded</em> assistant you either clone an existing human voice (5&ndash;30 s sample needed; see slide 06) or use a voice-design API (ElevenLabs <code>/v1/voice-generation</code>, PlayHT) that lets you prompt-engineer an accent, age, and timbre without any speaker recording.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Audio encoding tip</div>
+        <p>Request <code>pcm_16000</code> (raw 16-bit signed PCM at 16 kHz) from both ElevenLabs and Cartesia &mdash; it avoids an MP3 decode step on the client. The raw format adds ~10 % bandwidth but reduces end-to-end playout latency by 30&ndash;60 ms because there is no codec buffer to fill before the first decoded frame is ready.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Latency-First TTS &mdash; Cartesia Sonic, ElevenLabs Flash</h2>
+    <p>Both Cartesia Sonic 2 and ElevenLabs Flash v2.5 are purpose-built for real-time conversational use. They share two architectural bets: <strong>state-space models (SSM)</strong> instead of attention-heavy Transformers for the acoustic decoder, and <strong>streaming chunked inference</strong> that emits audio before the full sentence is processed.</p>
+
+    <h3>Cartesia Sonic 2 &mdash; technical internals</h3>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Mamba SSM backbone</h4>
+            <p>Cartesia&rsquo;s model uses a <strong>Mamba</strong>-family state-space layer (selective scan, hardware-optimised CUDA kernel) for the acoustic decoder. SSMs have O(L) rather than O(L&sup2;) memory in the sequence dimension, which matters for multi-sentence utterances. The state is a fixed-size vector rather than a KV-cache, enabling incremental autoregressive decoding without cache growth.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Streaming API &mdash; WebSocket protocol</h4>
+            <p>The client sends a single JSON message with <code>model_id</code>, <code>voice</code>, and <code>transcript</code>. Cartesia starts returning <code>audio</code> chunks (base64 PCM or raw bytes depending on <code>output_format</code>) within ~90 ms of the first request byte. Chunk size is ~4096 samples &asymp; 256 ms at 16 kHz &mdash; keep playout buffer &ge; 3 chunks to absorb jitter.</p>
+        </div>
+    </div>
+
+    <div class="code-block">
+        <div class="code-header">python — Cartesia Sonic streaming (cartesia-python 1.x SDK)</div>
+<pre><code><span class="kw">from</span> cartesia <span class="kw">import</span> <span class="type">Cartesia</span>
+<span class="kw">import</span> pyaudio
+
+client = <span class="type">Cartesia</span>(api_key=<span class="type">CARTESIA_API_KEY</span>)
+pa     = pyaudio.<span class="type">PyAudio</span>()
+stream = pa.<span class="fn">open</span>(format=pyaudio.paInt16, channels=<span class="num">1</span>,
+                   rate=<span class="num">44100</span>, output=<span class="kw">True</span>)
+
+<span class="kw">for</span> output <span class="kw">in</span> client.tts.<span class="fn">bytes</span>(
+    model_id=<span class="str">"sonic-2"</span>,
+    transcript=<span class="str">"Hello, how can I help you today?"</span>,
+    voice={<span class="str">"mode"</span>: <span class="str">"id"</span>, <span class="str">"id"</span>: <span class="str">"a0e99841-438c-4a64-b679-ae501e7d6091"</span>},
+    output_format={<span class="str">"container"</span>: <span class="str">"raw"</span>, <span class="str">"encoding"</span>: <span class="str">"pcm_s16le"</span>,
+                   <span class="str">"sample_rate"</span>: <span class="num">44100</span>},
+    stream=<span class="kw">True</span>,
+):
+    stream.<span class="fn">write</span>(output)
+
+stream.<span class="fn">stop_stream</span>()
+stream.<span class="fn">close</span>()</code></pre>
+    </div>
+
+    <h3>ElevenLabs Flash v2.5 &mdash; design choices</h3>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Input streaming</h4>
+            <p>Flash v2.5 exposes a <strong>WebSocket input-streaming endpoint</strong> (<code>wss://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream-input?model_id=eleven_flash_v2_5</code>). You push sentence fragments as they arrive from the LLM token stream &mdash; Flash starts synthesising before the sentence is complete, overlapping LLM and TTS latency. ElevenLabs calls this &ldquo;text-to-speech streaming with auto-flush&rdquo;.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Alignment data</h4>
+            <p>Set <code>enable_ssml_parsing=false</code> and <code>output_format=pcm_16000</code> for minimum overhead. The response stream carries optional <code>alignment</code> chunks with word-level timestamps; these are useful for driving lip-sync or caption overlays but add ~5 ms per chunk, so disable them if not needed.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Sentence-boundary injection</div>
+        <p>For both Cartesia and Flash, send a full sentence &mdash; not a raw stream of tokens &mdash; as a single WebSocket message. Splitting a sentence across multiple sends forces the model to re-attend to an incomplete phonetic context and degrades prosody. A practical pattern: buffer LLM tokens until a sentence-final punctuation mark or after a 200 ms silence in the token stream, then flush.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>Voice Cloning &mdash; Capabilities &amp; Ethics</h2>
+    <p>Modern voice cloning can produce a highly convincing replica of a speaker&rsquo;s voice from as little as <strong>5 seconds</strong> of reference audio (ElevenLabs Instant Voice Clone) or produce near-broadcast quality from 30+ seconds. The capability is commercially useful for product personalisation and accessibility &mdash; and simultaneously one of the most directly misuse-prone generative AI features in production.</p>
+
+    <h3>Technical approaches</h3>
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Speaker embedding (fast)</h4>
+            <p>Extract a d-vector or x-vector from the reference via a pretrained speaker-encoder (e.g. GE2E, ECAPA-TDNN). Condition TTS decoder on the embedding. Works from 3&ndash;30 s. Quality limited by encoder generalisation. Used in ElevenLabs Instant Clone and Cartesia Voice Changer.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Fine-tune adaptation (better)</h4>
+            <p>LoRA-adapt the full TTS model on 1&ndash;10 minutes of reference audio. Captures prosody rhythms, breath patterns, and filler-word habits. ElevenLabs &ldquo;Professional Voice Clone&rdquo; tier; Coqui XTTS-v2 supports this via <code>tts.tts_to_file(speaker_wav=...)</code>. Requires compute; not realtime at clone time.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Zero-shot diffusion (cutting edge)</h4>
+            <p>Models such as <strong>Voicebox</strong> (Meta, 2023) and <strong>E2 TTS / F5-TTS</strong> (2024) use flow-matching or diffusion over a mel-spectrogram conditioned on in-context reference audio. No speaker-encoder training required. F5-TTS achieves near-parity with full fine-tune from a 5-second clip.</p>
+        </div>
+    </div>
+
+    <h3>Ethical &amp; legal obligations</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Requirement</th><th>Detail</th><th>Enforcement mechanism</th></tr></thead>
+            <tbody>
+                <tr><td>Explicit speaker consent</td><td>The person whose voice is cloned must actively consent. Opt-out is not sufficient. California SB 1047 &amp; EU AI Act Art. 52 both apply.</td><td>ElevenLabs requires a consent recording before Professional Clone is approved</td></tr>
+                <tr><td>Watermarking</td><td>Synthetic audio should carry an inaudible watermark (e.g. AudioSeal, C2PA provenance). ElevenLabs encodes a ~1 Hz steganographic signal; detection via <code>/v1/audio-isolation</code>.</td><td>Contractual obligation under ElevenLabs enterprise ToS from Jan 2025</td></tr>
+                <tr><td>No impersonation</td><td>Using a clone to represent that a real person said something they did not is fraud / defamation in most jurisdictions. Voice cloning for a chatbot persona is distinct from voice cloning for deception.</td><td>Platform ToS; EU AI Act &ldquo;deep fake&rdquo; disclosure requirement</td></tr>
+                <tr><td>Data retention</td><td>Reference audio may contain biometric data under GDPR Art. 9. Store encrypted at rest; delete on request; DPA required if processing on behalf of an EU controller.</td><td>GDPR enforcement; ICO guidance on biometric data (UK)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Quality vs Latency vs Cost Trade-Offs</h2>
+    <p>There is no free lunch. Every dial in the voice stack couples to at least two others. This slide maps the primary trade-offs so you can make an explicit decision rather than stumbling into a bad default.</p>
+
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 700 340" width="700" height="340" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <marker id="arrowQ" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#76B900"/>
+                </marker>
+            </defs>
+            <style>
+                .qlbl { fill: #e6edf3; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
+                .qsub { fill: #8b949e; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+                .qbox { fill: #161b22; stroke: #30363d; }
+                .qacc { fill: rgba(118,185,0,0.08); stroke: #76B900; }
+                .qln  { stroke: #76B900; stroke-width: 1.2; fill: none; marker-end: url(#arrowQ); }
+            </style>
+            <!-- Triangle vertices: Quality (top), Latency (bottom-left), Cost (bottom-right) -->
+            <polygon points="350,40 110,300 590,300" fill="rgba(118,185,0,0.04)" stroke="#21262d" stroke-width="1"/>
+            <!-- Vertex labels -->
+            <text x="350" y="28" text-anchor="middle" class="qlbl">Quality (MOS / naturalness)</text>
+            <text x="60"  y="320" text-anchor="middle" class="qlbl">Latency</text>
+            <text x="640" y="320" text-anchor="middle" class="qlbl">Cost</text>
+            <!-- Positioned dots -->
+            <circle cx="350" cy="100" r="8" fill="#76B900"/>
+            <text x="360" y="97" class="qsub">ElevenLabs Multilingual v2</text>
+            <text x="360" y="110" class="qsub">MOS 4.4, ~300ms, $0.30/Kc</text>
+
+            <circle cx="200" cy="230" r="8" fill="#ffa657"/>
+            <text x="210" y="227" class="qsub">Cartesia Sonic 2</text>
+            <text x="210" y="240" class="qsub">MOS 4.3, ~90ms, $0.065/Kc</text>
+
+            <circle cx="250" cy="210" r="8" fill="#ffa657"/>
+            <text x="130" y="200" class="qsub">ElevenLabs Flash v2.5</text>
+            <text x="130" y="213" class="qsub">MOS 4.2, ~75ms, $0.11/Kc</text>
+
+            <circle cx="430" cy="255" r="8" fill="#d2a8ff"/>
+            <text x="440" y="252" class="qsub">OpenAI TTS-1</text>
+            <text x="440" y="265" class="qsub">MOS 3.9, ~200ms, $0.015/Kc</text>
+
+            <circle cx="350" cy="235" r="8" fill="#c9d1d9"/>
+            <text x="360" y="232" class="qsub">Coqui XTTS-v2 (A10G)</text>
+            <text x="360" y="245" class="qsub">MOS 4.0, ~180ms, compute</text>
+        </svg>
+    </div>
+
+    <h3>Decision framework</h3>
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Interactive voice bot</h4>
+            <p>Latency dominates. Use Cartesia Sonic 2 or ElevenLabs Flash. Accept MOS ~4.2 over MOS ~4.4. Total pipeline must stay under 800 ms; every 50 ms TTS first-chunk saving is directly perceptible.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Async narration / IVR prompt</h4>
+            <p>Quality dominates; latency is irrelevant. Use ElevenLabs Multilingual v2 or PlayHT PlayDialog. Render overnight. Perceptible prosody gains justify the 4&times; price premium vs. TTS-1.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>High-volume call centre</h4>
+            <p>Cost dominates. OpenAI TTS-1 at $0.015/Kc or self-hosted Coqui XTTS-v2. At 1M characters/day the difference between TTS-1 ($15/day) and ElevenLabs Flash ($110/day) is $35K/year. Fine-tune XTTS-v2 on a branded voice to recoup quality.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">Measure, don&rsquo;t guess</div>
+        <p>Run your own MOS evaluation with the <strong>DNSMOS</strong> model (Microsoft, 2021) or <strong>ViSQOL</strong> (Google) on a representative sample of generated audio before committing to a provider. Published MOS figures are measured on clean read-speech; your domain may have names, acronyms, and brand jargon that degrades quality unevenly across providers.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Open-Source Options (Whisper, Coqui XTTS, F5-TTS)</h2>
+    <p>The open-source voice stack has matured to a point where self-hosted pipelines can reach commercial-grade quality &mdash; provided you have the GPU budget. The key components are <code>openai/whisper</code> for ASR, <code>coqui-ai/TTS</code> (XTTS-v2) for multi-speaker TTS, and the newer <strong>F5-TTS</strong> flow-matching model for zero-shot cloning.</p>
+
+    <h3>Self-hosted architecture</h3>
+    <div class="diagram-flow">
+        <div class="diagram-box accent">Client (browser / phone)</div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">Pipecat / LiveKit<br><small>orchestration</small></div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">faster-whisper<br><small>ASR (CTranslate2)</small></div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">LLM (vLLM)<br><small>Llama / Mistral</small></div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box">XTTS-v2 / F5-TTS<br><small>TTS</small></div>
+        <span class="diagram-arrow">&rarr;</span>
+        <div class="diagram-box accent">Client audio</div>
+    </div>
+
+    <h3>faster-whisper &mdash; CTranslate2 optimised ASR</h3>
+    <div class="code-block">
+        <div class="code-header">python — faster-whisper with VAD filter</div>
+<pre><code><span class="kw">from</span> faster_whisper <span class="kw">import</span> <span class="type">WhisperModel</span>
+
+model = <span class="type">WhisperModel</span>(<span class="str">"large-v3-turbo"</span>, device=<span class="str">"cuda"</span>, compute_type=<span class="str">"float16"</span>)
+
+segments, info = model.<span class="fn">transcribe</span>(
+    <span class="str">"audio.wav"</span>,
+    language=<span class="str">"en"</span>,
+    beam_size=<span class="num">5</span>,
+    vad_filter=<span class="kw">True</span>,
+    vad_parameters={
+        <span class="str">"min_silence_duration_ms"</span>: <span class="num">300</span>,
+        <span class="str">"threshold"</span>: <span class="num">0.5</span>,
+    },
+    word_timestamps=<span class="kw">True</span>,
+)
+<span class="kw">for</span> seg <span class="kw">in</span> segments:
+    <span class="fn">print</span>(<span class="str">f"[</span><span class="type">{seg.start:.2f}</span><span class="str">-&gt;</span><span class="type">{seg.end:.2f}</span><span class="str">] </span><span class="type">{seg.text}</span><span class="str">"</span>)
+    <span class="kw">for</span> word <span class="kw">in</span> seg.words:
+        <span class="fn">print</span>(<span class="str">f"  </span><span class="type">{word.word}</span><span class="str">  p=</span><span class="type">{word.probability:.2f}</span><span class="str">"</span>)</code></pre>
+    </div>
+
+    <h3>F5-TTS &mdash; zero-shot flow matching</h3>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Model architecture</h4>
+            <p>F5-TTS (Yushen Chen et al., 2024; <code>SWivid/F5-TTS</code> on HuggingFace) uses a <strong>flow-matching</strong> diffusion head over a duration-predicted mel-spectrogram. The reference speech segment is encoded into a conditioning vector via a DiT (Diffusion Transformer) block. Inference: ~30 NFE (function evaluations) at a 24 kHz sample rate, typically 400&ndash;600 ms on an A10G.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Usage &mdash; 5-second clone</h4>
+            <p>Provide a <code>ref_audio_path</code> (5&ndash;30 s WAV), a <code>ref_text</code> transcription of that clip, and the <code>gen_text</code> to synthesise. F5-TTS matches timbre and prosody without any fine-tuning. The speaker embedding is computed on-the-fly each call &mdash; useful for customer-service bots where each caller gets their own voice reflected back during confirmation steps.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">GPU requirements &mdash; minimum viable self-hosted stack</div>
+        <p>faster-whisper large-v3-turbo: 4 GB VRAM at float16 &mdash; fits an RTX 3060 or A10G. Coqui XTTS-v2: 3.5 GB VRAM; F5-TTS: 6 GB VRAM. A concurrent ASR+TTS pipeline needs at least an A10G (24 GB). Batch requests where possible; a single A10G can handle ~20 concurrent ASR or ~8 concurrent TTS streams before queuing latency degrades the user experience.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>What to Take Away</h2>
+    <ul>
+        <li><strong>The pipeline has three latency contributors.</strong> ASR final latency + LLM TTFT + TTS first-chunk. The 800 ms comfort budget demands each stay under ~250&ndash;300 ms. VAD-gated streaming ASR and Flash/Sonic TTS are the fastest levers.</li>
+        <li><strong>Whisper is the reference ASR model</strong> but not a real-time service. Use faster-whisper with the <code>large-v3-turbo</code> checkpoint and CTranslate2 float16 for self-hosted; use Deepgram Nova-3 or Soniox for cloud streaming at &lt;200 ms latency.</li>
+        <li><strong>TTS has bifurcated.</strong> For interactive voice: Cartesia Sonic 2 (~90 ms first chunk, $0.065/Kc) or ElevenLabs Flash v2.5 (~75 ms, $0.11/Kc). For narration quality: ElevenLabs Multilingual v2 or PlayHT PlayDialog.</li>
+        <li><strong>Voice cloning requires explicit consent.</strong> The legal landscape (EU AI Act, California SB 1047) mandates it. Always apply a steganographic watermark (AudioSeal or C2PA) to synthetic audio in production.</li>
+        <li><strong>Open-source is viable.</strong> faster-whisper + Coqui XTTS-v2 / F5-TTS on a single A10G (24 GB) covers small-scale deployment. F5-TTS zero-shot cloning from 5 s of reference audio is near commercial quality.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Where to next</div>
+        <p>Deck 02 covers real-time orchestration frameworks &mdash; Pipecat, LiveKit Agents, and the OpenAI Realtime API &mdash; that wire the ASR/LLM/TTS components into a production pipeline with interruption handling and telephony bridges. Deck 03 zooms into latency measurement and turn-taking strategies for hitting the 800 ms target reliably.</p>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Voice_RealTime">Voice &amp; Real-Time Agents Series</a></p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Voice_RealTime">Back to Series Index</a></p>
+</footer>
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>
