@@ -9,15 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-card: #0d1117;
-            --bg-code: #161b22;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --accent: #76B900;
-            --accent-dim: #76B90044;
-            --accent-glow: #76B90033;
-            --border: #21262d;
+            --bg-primary: #0f2027;
+            --bg-card: #13272f;
+            --bg-code: #182f38;
+            --text-primary: #ede7dd;
+            --text-secondary: #8ca5a9;
+            --accent: #83c395;
+            --accent-dim: #83c39544;
+            --accent-glow: #83c39533;
+            --border: #23404a;
             --font-display: 'Space Grotesk', sans-serif;
             --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
             --font-body: 'Inter', sans-serif;
@@ -165,7 +165,7 @@
             border: 1px solid var(--border);
             padding: 0.05rem 0.35rem;
             border-radius: 3px;
-            color: #c9d1d9;
+            color: #cfd7d1;
         }
         .code-block {
             background: var(--bg-code);
@@ -178,7 +178,7 @@
             font-family: var(--font-mono);
             font-size: 0.75rem;
             color: var(--accent);
-            background: rgba(118, 185, 0, 0.08);
+            background: rgba(131,195,149,0.08);
             padding: 0.4rem 1rem;
             border-bottom: 1px solid var(--border);
         }
@@ -187,19 +187,19 @@
             font-family: var(--font-mono);
             font-size: 0.85rem;
             line-height: 1.6;
-            color: #c9d1d9;
+            color: #cfd7d1;
             background: transparent;
             border: none;
             padding: 0;
         }
-        .kw { color: #ff7b72; }
-        .fn { color: #d2a8ff; }
-        .str { color: #a5d6ff; }
-        .cm { color: #8b949e; font-style: italic; }
-        .num { color: #79c0ff; }
-        .type { color: #ffa657; }
-        .dir { color: #ff7b72; }
-        .mac { color: #ffa657; }
+        .kw { color: #f48f70; }
+        .fn { color: #d4c0ea; }
+        .str { color: #c3dbea; }
+        .cm { color: #8ca5a9; font-style: italic; }
+        .num { color: #a8cee8; }
+        .type { color: #eac48b; }
+        .dir { color: #f48f70; }
+        .mac { color: #eac48b; }
         .table-wrap {
             overflow-x: auto;
             margin: 1.25rem 0;
@@ -223,7 +223,7 @@
             color: var(--text-secondary);
         }
         tr:last-child td { border-bottom: none; }
-        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        tr:nth-child(even) td { background: rgba(19,39,47,0.5); }
         .diagram-flow {
             display: flex;
             flex-wrap: wrap;
@@ -247,7 +247,7 @@
             text-align: center;
             white-space: nowrap;
         }
-        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(131,195,149,0.08); }
         .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
         .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
         .diagram-vertical {
@@ -290,7 +290,7 @@
             border: 1px solid var(--border);
             color: var(--text-secondary);
         }
-        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(131,195,149,0.08); }
         .diagram-grid {
             display: grid;
             gap: 0.75rem;
@@ -384,8 +384,8 @@
             margin-left: 0.3rem;
         }
         .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
-        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        .badge.warn  { border-color: #eac48b; color: #eac48b; background: rgba(234,196,139,0.08); }
+        .badge.bad   { border-color: #f48f70; color: #f48f70; background: rgba(244,143,112,0.08); }
         @media (max-width: 640px) {
             .slide { padding: 3rem 1rem; min-height: auto; }
             .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
@@ -757,40 +757,40 @@ stream.<span class="fn">close</span>()</code></pre>
         <svg viewBox="0 0 700 340" width="700" height="340" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <marker id="arrowQ" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#76B900"/>
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#83c395"/>
                 </marker>
             </defs>
             <style>
-                .qlbl { fill: #e6edf3; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
-                .qsub { fill: #8b949e; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
-                .qbox { fill: #161b22; stroke: #30363d; }
-                .qacc { fill: rgba(118,185,0,0.08); stroke: #76B900; }
-                .qln  { stroke: #76B900; stroke-width: 1.2; fill: none; marker-end: url(#arrowQ); }
+                .qlbl { fill: #ede7dd; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; }
+                .qsub { fill: #8ca5a9; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+                .qbox { fill: #182f38; stroke: #2f4d57; }
+                .qacc { fill: rgba(131,195,149,0.08); stroke: #83c395; }
+                .qln  { stroke: #83c395; stroke-width: 1.2; fill: none; marker-end: url(#arrowQ); }
             </style>
             <!-- Triangle vertices: Quality (top), Latency (bottom-left), Cost (bottom-right) -->
-            <polygon points="350,40 110,300 590,300" fill="rgba(118,185,0,0.04)" stroke="#21262d" stroke-width="1"/>
+            <polygon points="350,40 110,300 590,300" fill="rgba(131,195,149,0.04)" stroke="#23404a" stroke-width="1"/>
             <!-- Vertex labels -->
             <text x="350" y="28" text-anchor="middle" class="qlbl">Quality (MOS / naturalness)</text>
             <text x="60"  y="320" text-anchor="middle" class="qlbl">Latency</text>
             <text x="640" y="320" text-anchor="middle" class="qlbl">Cost</text>
             <!-- Positioned dots -->
-            <circle cx="350" cy="100" r="8" fill="#76B900"/>
+            <circle cx="350" cy="100" r="8" fill="#83c395"/>
             <text x="360" y="97" class="qsub">ElevenLabs Multilingual v2</text>
             <text x="360" y="110" class="qsub">MOS 4.4, ~300ms, $0.30/Kc</text>
 
-            <circle cx="200" cy="230" r="8" fill="#ffa657"/>
+            <circle cx="200" cy="230" r="8" fill="#eac48b"/>
             <text x="210" y="227" class="qsub">Cartesia Sonic 2</text>
             <text x="210" y="240" class="qsub">MOS 4.3, ~90ms, $0.065/Kc</text>
 
-            <circle cx="250" cy="210" r="8" fill="#ffa657"/>
+            <circle cx="250" cy="210" r="8" fill="#eac48b"/>
             <text x="130" y="200" class="qsub">ElevenLabs Flash v2.5</text>
             <text x="130" y="213" class="qsub">MOS 4.2, ~75ms, $0.11/Kc</text>
 
-            <circle cx="430" cy="255" r="8" fill="#d2a8ff"/>
+            <circle cx="430" cy="255" r="8" fill="#d4c0ea"/>
             <text x="440" y="252" class="qsub">OpenAI TTS-1</text>
             <text x="440" y="265" class="qsub">MOS 3.9, ~200ms, $0.015/Kc</text>
 
-            <circle cx="350" cy="235" r="8" fill="#c9d1d9"/>
+            <circle cx="350" cy="235" r="8" fill="#cfd7d1"/>
             <text x="360" y="232" class="qsub">Coqui XTTS-v2 (A10G)</text>
             <text x="360" y="245" class="qsub">MOS 4.0, ~180ms, compute</text>
         </svg>
